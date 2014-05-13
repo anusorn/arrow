@@ -1,0 +1,60 @@
+Agnostic Request Routing Workflow (ARROW)
+
+Usage: ./arrow <Listening_IP> <default_host_to_redirect_to>
+
+Listening IP can be 0.0.0.0 or :: for any interface. Alternatively, an address of desired interface is given.
+Default host should be FQDN without any protocol prefixes, e.g. cloudfront.com (no closing dot as in DNS master files).
+HTTP router will use this name to issue 302 redirect, for instance:
+
+GET /foo/bar/live.f4m
+Host: hyvd.cnn.com
+
+Request Router could not match the requester IP address against the ranges specified in range.web file, then it returns:
+
+302 Found
+Location: http://cloudfront.com/hyvd.cnn.com/foo/bar/live.f4m
+
+DNS router will use this default host to return it as CNAME in Answer section of authoritative response to any query,
+originating from requester whose IP address could not be matched against the ranges specified in range.dns file.
+
+range.* files format:
+
+<IP_low> <IP_high> <Streaming_point_ID>
+
+It is possible to comment out the line with '#' to disable the range. Streaming point ID 1 corresponds to the very first
+line (and no empty lines allowed) in spids file. Streaming Point ID 0 also disables the range altogether.
+
+spids file describes the Streaming points. Each line of the file corresponds to a Streaming point with ID that
+equals to the line number (starting from 1). Empty or beginning with '#' line means that the streaming point is out of
+service, and all corresponding requests are diverted to the default host (provided in the command line argument).
+
+Time-to-live of TCP connection is 10 seconds. Requester is advised to close the connection via HTTP header in 302 response.
+If the connection lives more than 10 seconds for whatever reason it is reset.
+
+Time-to-live of DNS response is specified as 1 day.
+
+When the daemon (./arrow) starts it looks for spids, range.web, and range.dns files in its working folder. spids file
+must be present. If range.web not present - web server (http request router) will not start. If range.dns not present -
+dns server (dns request router) will not start. This cannot be changed by putting in either file later and hupping the
+daemon. HUP signal will reload all configuration files in work though.
+
+Syslog facilities engaged: INFO, ERROR, CRITICAL (daemon's death). Full IPv4 and IPv6 support.
+
+NOTES
+
+IPv4 addresses in rang.* files will be ok on IPv6-only server due to internal IPv4MAPPED handling feature.
+
+DNS request router is pared DNS server capable of just A, AAAA, and Any requests. Therefore, it will not qualify under
+IANA (https://www.iana.org/help/nameserver-requirements) for a top-level server. The following workaround solves this.
+
+Your CDN domain is maintained at proper name servers, and let this domain be hyvd.net for instance. Then the zone file
+for hyvd.net should contain these records:
+
+cpa.hyvd.net.  86400  IN  NS  glue.hyvd.net.
+cpb.hyvd.net.  86400  IN  NS  glue.hyvd.net.
+...
+glue.hyvd.net. 86400  IN  A   54.72.83.1
+
+Now, "cpa" and "cpb" are content provider IDs (e.g. your customers), and 54.72.83.1 is the present DNS request router.
+
+(c) Vitaly Zuevsky 2014
