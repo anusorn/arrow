@@ -48,13 +48,11 @@ DNS request router is pared DNS server capable of just A, AAAA, and Any requests
 IANA (https://www.iana.org/help/nameserver-requirements) for a top-level server. The following workaround solves this.
 
 Your CDN domain is maintained at proper name servers, and let this domain be hyvd.net for instance. Then the zone file
-for hyvd.net should contain these records:
+for hyvd.net contains:
 
-cpa.hyvd.net.  86400  IN  NS  glue.hyvd.net.
-cpb.hyvd.net.  86400  IN  NS  glue.hyvd.net.
-...
+x.hyvd.net.  86400  IN  NS  glue.hyvd.net.
 glue.hyvd.net. 86400  IN  A   54.72.83.1
 
-Now, "cpa" and "cpb" are content provider IDs (e.g. your customers), and 54.72.83.1 is the present DNS request router.
+Now, "cp.x.hyvd.net" is a content provider named "cp", and 54.72.83.1 is the present DNS request router.
 
 (c) Vitaly Zuevsky 2014
